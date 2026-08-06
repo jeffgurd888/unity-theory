@@ -1,2 +1,5 @@
-# unity-theory
-“Unity Theory paper and Lean 4 proofs”
+# Unity Theory
+
+A unified algebraic framework for operator theory.
+
+Coming soon.
