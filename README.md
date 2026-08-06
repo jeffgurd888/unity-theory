@@ -1,27 +1,24 @@
 # unity-theory
 
-Formalization of "Thet systems" in Lean 4 / Mathlib4 (Riesz / duality approach).
+Formalization of **Thet systems** in Lean 4 / Mathlib4 — a duality-based approach using Riesz representation on finite-dimensional complex inner-product spaces.
 
-This repository contains an initial development exploring duality-based constructions
-on finite-dimensional complex inner-product spaces. The feature branch
-`feature/thet-duality` contains the first formal file `src/ThetSystem.lean` and
-sponsorship documentation.
+This repository contains an early development that explores how certain dual-cone and orthogonality relations can be captured in a formally verified setting. The feature branch `feature/thet-duality` carries the first formal file `src/ThetSystem.lean` together with sponsorship documentation.
 
-Quick links
-- Branch with current work: https://github.com/jeffgurd888/unity-theory/tree/feature%2Fthet-duality
-- File added: `src/ThetSystem.lean`
-- Issue: https://github.com/jeffgurd888/unity-theory/issues/1
+## What is a Thet system?
 
-Build
-- Install Lean toolchain (elan) and Lake (see https://leanprover-community.github.io/lean4/doc/).
-- Run `lake build` (requires Mathlib4; the lakefile in the branch points at the Mathlib4 `main` branch).
+A *Thet system* (over a finite-dimensional complex Hilbert space) consists of two families of vectors together with constraints that express a mutual “dual” relationship, often phrased in terms of Riesz representation, orthocomplements, and polar sets. The Lean formalisation in this repo builds the basic definitions, proves elementary properties, and sets up the algebraic structures needed for further study.
 
-Sponsorship
-If you find this project useful, please consider sponsoring development. Ways to sponsor:
-- GitHub Sponsors: https://github.com/sponsors/jeffgurd888
-- Cash App: https://cash.app/$Gurd888
+## Quick links
 
-See `SPONSORS.md` and `FUNDING.yml` for details.
+- Branch with current work: [`feature/thet-duality`](https://github.com/jeffgurd888/unity-theory/tree/feature%2Fthet-duality)
+- Main formal file: [`src/ThetSystem.lean`](https://github.com/jeffgurd888/unity-theory/blob/feature%2Fthet-duality/src/ThetSystem.lean)
+- Issue tracker: [Issue #1](https://github.com/jeffgurd888/unity-theory/issues/1)
 
-Contributing
-Contributions are welcome — please open issues or pull requests. For development notes and TODOs see the comments in `src/ThetSystem.lean`.
+## Build
+
+1. Install the Lean toolchain (`elan`) and Lake (see the [Lean 4 setup guide](https://leanprover-community.github.io/lean4/doc/)).
+2. Clone the repository and check out the feature branch:
+   ```bash
+   git clone https://github.com/jeffgurd888/unity-theory
+   cd unity-theory
+   git checkout feature/thet-duality
