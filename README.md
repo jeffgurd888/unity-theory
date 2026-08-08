@@ -365,3 +365,4 @@ CKM Hierarchy \lambda \sim 0.22
 ---
 
 All algebraic open problems resolved and machine-verified. All physical extensions rigorously derived and formally specified.
+lake build
