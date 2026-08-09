@@ -1,5 +1,286 @@
 import Mathlib.Data.Matrix.Basic
 import Mathlib.Data.Complex.Basic
+import Mathlib.Algebra.Lie.OfAssociative
+import Mathlib.Algebra.Lie.Submodule
+import Mathlib.Algebra.Lie.Basic
+import Mathlib.Algebra.Lie.Equiv          -- needed for ≃ₗ⁅ℝ⁆
+import Mathlib.LinearAlgebra.Basis.Basic
+import Mathlib.Analysis.InnerProductSpace.CrossProduct
+import Mathlib.Tactic
+
+open Matrix Complex
+
+namespace SU2SO3
+
+/- =========================================================================
+   PART 1: 𝔰𝔲(2) as a matrix Lie subalgebra of M₂(ℂ)
+   ========================================================================= -/
+
+/-- Pauli matrices -/
+def σx : Matrix (Fin 2) (Fin 2) ℂ := !![0, 1; 1, 0]
+def σy : Matrix (Fin 2) (Fin 2) ℂ := !![0, -I; I, 0]
+def σz : Matrix (Fin 2) (Fin 2) ℂ := !![1, 0; 0, -1]
+
+/-- 𝔰𝔲(2) basis: traceless skew-Hermitian matrices, tⱼ = (i/2) σⱼ -/
+def tx : Matrix (Fin 2) (Fin 2) ℂ := (I / 2 : ℂ) • σx
+def ty : Matrix (Fin 2) (Fin 2) ℂ := (I / 2 : ℂ) • σy
+def tz : Matrix (Fin 2) (Fin 2) ℂ := (I / 2 : ℂ) • σz
+
+lemma comm_tx_ty : tx * ty - ty * tx = -tz := by
+  ext i j
+  fin_cases i <;> fin_cases j <;>
+    simp [tx, ty, tz, σx, σy, σz, Matrix.mul_apply, Matrix.sub_apply,
+          Matrix.smul_apply, Fin.sum_univ_two, Complex.ext_iff] <;> ring
+
+lemma comm_ty_tz : ty * tz - tz * ty = -tx := by
+  ext i j
+  fin_cases i <;> fin_cases j <;>
+    simp [tx, ty, tz, σx, σy, σz, Matrix.mul_apply, Matrix.sub_apply,
+          Matrix.smul_apply, Fin.sum_univ_two, Complex.ext_iff] <;> ring
+
+lemma comm_tz_tx : tz * tx - tx * tz = -ty := by
+  ext i j
+  fin_cases i <;> fin_cases j <;>
+    simp [tx, ty, tz, σx, σy, σz, Matrix.mul_apply, Matrix.sub_apply,
+          Matrix.smul_apply, Fin.sum_univ_two, Complex.ext_iff] <;> ring
+
+lemma comm_ty_tx : ty * tx - tx * ty = tz := by
+  have h := comm_tx_ty; linear_combination -h
+
+lemma comm_tz_ty : tz * ty - ty * tz = tx := by
+  have h := comm_ty_tz; linear_combination -h
+
+lemma comm_tx_tz : tx * tz - tz * tx = ty := by
+  have h := comm_tz_tx; linear_combination -h
+
+/-- tx, ty, tz are linearly independent over ℝ. -/
+lemma independent_tx_ty_tz : LinearIndependent ℝ ![tx, ty, tz] := by
+  apply Fintype.linearIndependent_iff.2
+  intro f h
+  have h01 : (f 0 • tx + f 1 • ty + f 2 • tz) 0 1 = 0 := by rw [h]; simp
+  have h10 : (f 0 • tx + f 1 • ty + f 2 • tz) 1 0 = 0 := by rw [h]; simp
+  have h00 : (f 0 • tx + f 1 • ty + f 2 • tz) 0 0 = 0 := by rw [h]; simp
+  simp [tx, ty, tz, σx, σy, σz, Matrix.add_apply, Matrix.smul_apply,
+        Complex.ext_iff] at h00 h01 h10
+  -- The following three `have` isolate each coefficient; `nlinarith` closes them.
+  have hf0 : f 0 = 0 := by nlinarith [h01, h10]
+  have hf1 : f 1 = 0 := by nlinarith [h01, h10]
+  have hf2 : f 2 = 0 := by nlinarith [h00]
+  ext i; fin_cases i <;> assumption
+
+def su2_submodule : Submodule ℝ (Matrix (Fin 2) (Fin 2) ℂ) :=
+  Submodule.span ℝ {tx, ty, tz}
+
+lemma su2_submodule_lie_mem (x y : Matrix (Fin 2) (Fin 2) ℂ)
+    (hx : x ∈ su2_submodule) (hy : y ∈ su2_submodule) :
+    ⁅x, y⁆ ∈ su2_submodule := by
+  let s : Set (Matrix (Fin 2) (Fin 2) ℂ) := {tx, ty, tz}
+  have h_map : Submodule.map₂ (fun u v => ⁅u, v⁆) (Submodule.span ℝ s)
+      (Submodule.span ℝ s) ≤ Submodule.span ℝ s := by
+    rw [Submodule.map₂_span_span]
+    apply Submodule.span_mono
+    rintro z ⟨⟨a, b⟩, ⟨ha, hb⟩, rfl⟩
+    simp only [s, Set.mem_insert_iff, Set.mem_singleton_iff] at ha hb
+    rcases ha with rfl | rfl | rfl <;> rcases hb with rfl | rfl | rfl <;>
+      simp [LieRing.of_associative_ring_bracket, comm_tx_ty, comm_ty_tz,
+            comm_tz_tx, comm_ty_tx, comm_tz_ty, comm_tx_tz,
+            Submodule.subset_span, sub_self]
+  exact h_map (Submodule.mem_map₂_of_mem hx hy)
+
+def su2_lie_subalgebra : LieSubalgebra ℝ (Matrix (Fin 2) (Fin 2) ℂ) :=
+  { su2_submodule with
+    lie_mem' := su2_submodule_lie_mem _ _ }
+
+/- =========================================================================
+   PART 2: 𝔰𝔬(3) as a matrix Lie subalgebra of M₃(ℝ)
+   ========================================================================= -/
+
+def Lx : Matrix (Fin 3) (Fin 3) ℝ := !![0,0,0; 0,0,-1; 0,1,0]
+def Ly : Matrix (Fin 3) (Fin 3) ℝ := !![0,0,1; 0,0,0; -1,0,0]
+def Lz : Matrix (Fin 3) (Fin 3) ℝ := !![0,-1,0; 1,0,0; 0,0,0]
+
+lemma comm_Lx_Ly : Lx * Ly - Ly * Lx = Lz := by
+  ext i j; fin_cases i <;> fin_cases j <;>
+    simp [Lx, Ly, Lz, Matrix.mul_apply, Fin.sum_univ_three] <;> ring
+
+lemma comm_Ly_Lz : Ly * Lz - Lz * Ly = Lx := by
+  ext i j; fin_cases i <;> fin_cases j <;>
+    simp [Lx, Ly, Lz, Matrix.mul_apply, Fin.sum_univ_three] <;> ring
+
+lemma comm_Lz_Lx : Lz * Lx - Lx * Lz = Ly := by
+  ext i j; fin_cases i <;> fin_cases j <;>
+    simp [Lx, Ly, Lz, Matrix.mul_apply, Fin.sum_univ_three] <;> ring
+
+lemma comm_Ly_Lx : Ly * Lx - Lx * Ly = -Lz := by
+  have h := comm_Lx_Ly; linear_combination -h
+
+lemma comm_Lz_Ly : Lz * Ly - Ly * Lz = -Lx := by
+  have h := comm_Ly_Lz; linear_combination -h
+
+lemma comm_Lx_Lz : Lx * Lz - Lz * Lx = -Ly := by
+  have h := comm_Lz_Lx; linear_combination -h
+
+lemma independent_Lx_Ly_Lz : LinearIndependent ℝ ![Lx, Ly, Lz] := by
+  apply Fintype.linearIndependent_iff.2
+  intro f h
+  have h01 : (f 0 • Lx + f 1 • Ly + f 2 • Lz) 0 1 = 0 := by rw [h]; simp
+  have h02 : (f 0 • Lx + f 1 • Ly + f 2 • Lz) 0 2 = 0 := by rw [h]; simp
+  have h12 : (f 0 • Lx + f 1 • Ly + f 2 • Lz) 1 2 = 0 := by rw [h]; simp
+  simp [Lx, Ly, Lz, Matrix.add_apply, Matrix.smul_apply] at h01 h02 h12
+  have hf0 : f 0 = 0 := by linarith [h12]
+  have hf1 : f 1 = 0 := by linarith [h02]
+  have hf2 : f 2 = 0 := by linarith [h01]
+  ext i; fin_cases i <;> assumption
+
+def so3_submodule : Submodule ℝ (Matrix (Fin 3) (Fin 3) ℝ) :=
+  Submodule.span ℝ {Lx, Ly, Lz}
+
+lemma so3_submodule_lie_mem (x y : Matrix (Fin 3) (Fin 3) ℝ)
+    (hx : x ∈ so3_submodule) (hy : y ∈ so3_submodule) :
+    ⁅x, y⁆ ∈ so3_submodule := by
+  let s : Set (Matrix (Fin 3) (Fin 3) ℝ) := {Lx, Ly, Lz}
+  have h_map : Submodule.map₂ (fun u v => ⁅u, v⁆) (Submodule.span ℝ s)
+      (Submodule.span ℝ s) ≤ Submodule.span ℝ s := by
+    rw [Submodule.map₂_span_span]
+    apply Submodule.span_mono
+    rintro z ⟨⟨a, b⟩, ⟨ha, hb⟩, rfl⟩
+    simp only [s, Set.mem_insert_iff, Set.mem_singleton_iff] at ha hb
+    rcases ha with rfl | rfl | rfl <;> rcases hb with rfl | rfl | rfl <;>
+      simp [LieRing.of_associative_ring_bracket, comm_Lx_Ly, comm_Ly_Lz,
+            comm_Lz_Lx, comm_Ly_Lx, comm_Lz_Ly, comm_Lx_Lz,
+            Submodule.subset_span, sub_self]
+  exact h_map (Submodule.mem_map₂_of_mem hx hy)
+
+def so3_lie_subalgebra : LieSubalgebra ℝ (Matrix (Fin 3) (Fin 3) ℝ) :=
+  { so3_submodule with
+    lie_mem' := so3_submodule_lie_mem _ _ }
+
+/- =========================================================================
+   PART 3: Both algebras are isomorphic to (ℝ³, ×)
+   ========================================================================= -/
+
+abbrev ℝ³ := EuclideanSpace ℝ (Fin 3)
+
+noncomputable def su2_basis : Basis (Fin 3) ℝ su2_lie_subalgebra :=
+  Basis.span independent_tx_ty_tz
+
+noncomputable def so3_basis : Basis (Fin 3) ℝ so3_lie_subalgebra :=
+  Basis.span independent_Lx_Ly_Lz
+
+/- φ : ℝ³ → 𝔰𝔲(2), sending the standard basis vector eᵢ to -tᵢ.
+   FIX: use `Submodule.neg_mem` to prove -tx, -ty, -tz are in the span.
+-/
+noncomputable def φ_linear : ℝ³ →ₗ[ℝ] su2_lie_subalgebra :=
+  su2_basis.constr ℝ ![
+    ⟨-tx, Submodule.neg_mem (Submodule.subset_span (by simp))⟩,
+    ⟨-ty, Submodule.neg_mem (Submodule.subset_span (by simp))⟩,
+    ⟨-tz, Submodule.neg_mem (Submodule.subset_span (by simp))⟩ ]
+
+noncomputable def ψ_linear : su2_lie_subalgebra →ₗ[ℝ] ℝ³ :=
+  su2_basis.constr ℝ ![ -(EuclideanSpace.single 0 1),
+                         -(EuclideanSpace.single 1 1),
+                         -(EuclideanSpace.single 2 1) ]
+
+/- Auxiliary lemmas for the cross product on the standard basis of ℝ³.
+   We only need the three positive cycles; the antisymmetry gives the rest.
+-/
+local lemma cross_e0_e1 (stdBasis := EuclideanSpace.basisFun (Fin 3) ℝ) :
+    (stdBasis 0) ×₃ (stdBasis 1) = stdBasis 2 := by
+  ext k; fin_cases k <;>
+    simp [cross_apply, stdBasis, Matrix.vecMul, Fin.sum_univ_three,
+          Pi.single_apply, Fin.elim0, Fin.elim1, Fin.elim2]
+
+local lemma cross_e1_e2 (stdBasis := EuclideanSpace.basisFun (Fin 3) ℝ) :
+    (stdBasis 1) ×₃ (stdBasis 2) = stdBasis 0 := by
+  ext k; fin_cases k <;>
+    simp [cross_apply, stdBasis, Matrix.vecMul, Fin.sum_univ_three,
+          Pi.single_apply, Fin.elim0, Fin.elim1, Fin.elim2]
+
+local lemma cross_e2_e0 (stdBasis := EuclideanSpace.basisFun (Fin 3) ℝ) :
+    (stdBasis 2) ×₃ (stdBasis 0) = stdBasis 1 := by
+  ext k; fin_cases k <;>
+    simp [cross_apply, stdBasis, Matrix.vecMul, Fin.sum_univ_three,
+          Pi.single_apply, Fin.elim0, Fin.elim1, Fin.elim2]
+
+lemma φ_linear_map_bracket (x y : ℝ³) :
+    φ_linear (x ×₃ y) = ⁅φ_linear x, φ_linear y⁆ := by
+  let stdBasis := EuclideanSpace.basisFun (Fin 3) ℝ
+  apply stdBasis.ext
+  intro i
+  apply stdBasis.ext
+  intro j
+  -- Reduce the cross product of two basis vectors using the cyclic identities,
+  -- antisymmetry, and x×x=0.
+  fin_cases i <;> fin_cases j <;>
+    simp only [cross_self, cross_anticomm, cross_e0_e1, cross_e1_e2, cross_e2_e0,
+               neg_eq_iff_neg, neg_neg] <;>
+    simp [stdBasis, φ_linear, su2_basis, Basis.constr_basis,
+          comm_tx_ty, comm_ty_tz, comm_tz_tx, comm_ty_tx, comm_tz_ty,
+          comm_tx_tz]
+
+noncomputable def su2_cross_equiv : ℝ³ ≃ₗ⁅ℝ⁆ su2_lie_subalgebra :=
+  { φ_linear with
+    map_lie' := φ_linear_map_bracket
+    invFun := ψ_linear
+    left_inv := by
+      intro x
+      apply su2_basis.ext
+      intro i; fin_cases i <;> simp [φ_linear, ψ_linear, su2_basis]
+    right_inv := by
+      apply (EuclideanSpace.basisFun (Fin 3) ℝ).ext
+      intro i; fin_cases i <;> simp [φ_linear, ψ_linear, su2_basis] }
+
+/- Mirror construction for 𝔰𝔬(3). -/
+noncomputable def φ'_linear : ℝ³ →ₗ[ℝ] so3_lie_subalgebra :=
+  so3_basis.constr ℝ ![
+    ⟨Lx, Submodule.subset_span (by simp)⟩,
+    ⟨Ly, Submodule.subset_span (by simp)⟩,
+    ⟨Lz, Submodule.subset_span (by simp)⟩ ]
+
+noncomputable def ψ'_linear : so3_lie_subalgebra →ₗ[ℝ] ℝ³ :=
+  so3_basis.constr ℝ ![ EuclideanSpace.single 0 1,
+                         EuclideanSpace.single 1 1,
+                         EuclideanSpace.single 2 1 ]
+
+lemma φ'_linear_map_bracket (x y : ℝ³) :
+    φ'_linear (x ×₃ y) = ⁅φ'_linear x, φ'_linear y⁆ := by
+  let stdBasis := EuclideanSpace.basisFun (Fin 3) ℝ
+  apply stdBasis.ext
+  intro i
+  apply stdBasis.ext
+  intro j
+  fin_cases i <;> fin_cases j <;>
+    simp only [cross_self, cross_anticomm, cross_e0_e1, cross_e1_e2, cross_e2_e0,
+               neg_eq_iff_neg, neg_neg] <;>
+    simp [stdBasis, φ'_linear, so3_basis, Basis.constr_basis,
+          comm_Lx_Ly, comm_Ly_Lz, comm_Lz_Lx, comm_Ly_Lx, comm_Lz_Ly,
+          comm_Lx_Lz]
+
+noncomputable def so3_cross_equiv : ℝ³ ≃ₗ⁅ℝ⁆ so3_lie_subalgebra :=
+  { φ'_linear with
+    map_lie' := φ'_linear_map_bracket
+    invFun := ψ'_linear
+    left_inv := by
+      intro x
+      apply so3_basis.ext
+      intro i; fin_cases i <;> simp [φ'_linear, ψ'_linear, so3_basis]
+    right_inv := by
+      apply (EuclideanSpace.basisFun (Fin 3) ℝ).ext
+      intro i; fin_cases i <;> simp [φ'_linear, ψ'_linear, so3_basis] }
+
+/- =========================================================================
+   Main result
+   ========================================================================= -/
+
+theorem su2_so3_isomorphism : su2_lie_subalgebra ≃ₗ⁅ℝ⁆ so3_lie_subalgebra :=
+  su2_cross_equiv.symm.trans so3_cross_equiv
+
+end SU2SO3
+
+
+
+import Mathlib.Data.Matrix.Basic
+import Mathlib.Data.Complex.Basic
 import Mathlib.LinearAlgebra.Matrix.NonsingularInverse
 import Mathlib.Algebra.Algebra.Basic
 import Mathlib.RingTheory.Adjoin.Basic
