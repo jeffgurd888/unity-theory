@@ -1,3 +1,182 @@
+
+import Mathlib.Data.Matrix.Basic
+import Mathlib.Data.Matrix.Notation
+import Mathlib.Data.Rat.Basic
+import Mathlib.Tactic
+
+/-!
+# Block‑scalar diagonals from algebra commutativity
+
+We consider the 15‑dimensional fermion space with the usual basis ordering:
+  Q_L (0-5), L_L (6-7), u_R (8-10), d_R (11-13), e_R (14).
+A diagonal matrix `Y = diag f` is said to be “block‑scalar” if `f` is constant
+on each of these five blocks.
+
+We show that if `Y` commutes with a small set of permutation matrices (that
+generate all transpositions inside each block), then `Y` is indeed block‑scalar.
+The permutation matrices are the images under the representation ρ of certain
+algebra elements of ℂ⊕ℍ⊕M₃(ℂ); we define them directly as 15×15 matrices.
+-/
+
+open Matrix
+
+namespace ThetStandardModel
+
+abbrev H15 := Fin 15
+
+/-- Diagonal matrix from a function `f : H15 → ℚ`. -/
+def diag (f : H15 → ℚ) : Matrix H15 H15 ℚ :=
+  λ i j => if i = j then f i else 0
+
+lemma diag_apply (f : H15 → ℚ) (i j : H15) : diag f i j = (if i = j then f i else 0) := rfl
+
+lemma diag_offdiag (f : H15 → ℚ) (i j : H15) (h : i ≠ j) : diag f i j = 0 := by
+  simp [diag, h]
+
+@[simp] lemma diag_diag (f : H15 → ℚ) (i : H15) : diag f i i = f i := by
+  simp [diag]
+
+/-- A permutation matrix that swaps two distinct indices `i` and `j`.
+    All diagonal entries are 1 except at i,i and j,j (set to 0);
+    the only non‑diagonal ones are at (i,j) and (j,i) (set to 1). -/
+def swapMat (i j : H15) : Matrix H15 H15 ℚ :=
+  λ a b =>
+    if a = b then
+      if a = i then 0
+      else if a = j then 0
+      else 1
+    else
+      if a = i ∧ b = j then 1
+      else if a = j ∧ b = i then 1
+      else 0
+
+lemma swapMat_comm (i j : H15) (hij : i ≠ j) :
+    swapMat i j * swapMat i j = 1 := by
+  ext a b; simp [swapMat, hij.symm?, Matrix.one_apply]
+  -- this can be done with fin_cases but we don't need it now
+
+/-- Crucial lemma: if a diagonal matrix `Y = diag f` commutes with `swapMat i j`
+    and `i ≠ j`, then `f i = f j`. -/
+lemma eq_of_comm_swap {f : H15 → ℚ} {i j : H15} (hij : i ≠ j)
+    (h_comm : diag f * swapMat i j = swapMat i j * diag f) : f i = f j := by
+  -- evaluate the commutator equality at position (i,j)
+  have h_entry := congrFun (congrArg (λ M => M i j) h_comm) (diag f * swapMat i j) i j
+  -- but congrFun expects an equality of matrices; the equality is already an equality of matrices.
+  -- Simpler: use `calc` with `Matrix.mul_apply`.
+  have h_entry' : (diag f * swapMat i j) i j = (swapMat i j * diag f) i j := by
+    rw [h_comm]
+  simp [diag, swapMat, Matrix.mul_apply, hij] at h_entry'
+  -- On the left: (diag f * S) i j = f i * S i j = f i * 1 = f i
+  -- On the right: (S * diag f) i j = S i j * f j = 1 * f j = f j
+  -- So h_entry' gives f i = f j.
+  exact h_entry'
+
+/-- The set of transpositions that generate all permutations inside each block.
+    We list them as pairs (i,j) with i<j. -/
+def transpositions : List (H15 × H15) :=
+  -- QL block (6 entries: 0..5)
+  let ql_pairs := List.ofFn (λ (p : Fin 15) => sorry) -- easier: write directly
+  -- We'll just write them out explicitly.
+  let ql_pairs : List (Fin 15 × Fin 15) :=
+    [(0,1),(0,2),(0,3),(0,4),(0,5),
+     (1,2),(1,3),(1,4),(1,5),
+     (2,3),(2,4),(2,5),
+     (3,4),(3,5),
+     (4,5)]
+  -- LL block (6,7)
+  let ll_pairs : List (Fin 15 × Fin 15) := [(6,7)]
+  -- uR block (8,9,10)
+  let ur_pairs : List (Fin 15 × Fin 15) := [(8,9),(8,10),(9,10)]
+  -- dR block (11,12,13)
+  let dr_pairs : List (Fin 15 × Fin 15) := [(11,12),(11,13),(12,13)]
+  ql_pairs ++ ll_pairs ++ ur_pairs ++ dr_pairs
+
+/-- The list of actual permutation matrices for each transposition. -/
+def swapMats : List (Matrix H15 H15 ℚ) :=
+  transpositions.map (λ ⟨i,j⟩ => swapMat i j)
+
+/-- Main theorem: if a diagonal matrix `Y = diag f` commutes with every matrix
+    in `swapMats`, then `f` is constant on each fermion block. -/
+theorem block_scalar_of_comm_swaps {f : H15 → ℚ}
+    (h_comm : ∀ S ∈ swapMats, diag f * S = S * diag f) :
+    (∀ (i j : Fin 6), f ⟨i, by omega⟩ = f ⟨j, by omega⟩) ∧
+    (f ⟨6, by omega⟩ = f ⟨7, by omega⟩) ∧
+    (∀ (i j : Fin 3), f ⟨8+i.1, by omega⟩ = f ⟨8+j.1, by omega⟩) ∧
+    (∀ (i j : Fin 3), f ⟨11+i.1, by omega⟩ = f ⟨11+j.1, by omega⟩) := by
+  -- We'll prove each block equality by using the appropriate transposition and the lemma.
+  have h_QL : ∀ (i j : Fin 6), f ⟨i.1, by omega⟩ = f ⟨j.1, by omega⟩ := by
+    intro i j
+    -- we need to show that i.1 and j.1 are connected by a chain of transpositions;
+    -- but the lemma `eq_of_comm_swap` only gives equality for a single swap.
+    -- However, since the set of swaps generates the full symmetric group, equality is transitive.
+    -- So we can use `refl` for i=j, and for i≠j we can pick a specific swap from our list.
+    -- We'll do a case analysis on i<j, i>j, etc., and use the appropriate swap.
+    -- Because the pairs are finite, we can write a tactic that checks all possibilities.
+    -- The simplest is to use `by decide` on the whole family? Not possible because f is symbolic.
+    -- We'll write a long `match` expression that covers all 36 possibilities.
+    -- To avoid a giant proof, we note that `swapMats` contains the transposition (min, max).
+    -- So we can define a helper function that finds the pair.
+    -- For now, we'll implement an explicit `match` using `repeat` and `apply`.
+    -- Actually, we can use `h_comm` for the specific swap `(i.1, j.1)` if it's in the list.
+    -- The list `transpositions` contains all pairs; we can check membership by `dec_trivial`.
+    -- Let's use `have hswap : swapMat ⟨i.1, by omega⟩ ⟨j.1, by omega⟩ ∈ swapMats := by ...`
+    -- then apply `eq_of_comm_swap` with the condition `i ≠ j`.
+    by_cases hij : i = j
+    · subst hij; rfl
+    · have hne : (⟨i.1, by omega⟩ : H15) ≠ ⟨j.1, by omega⟩ := by
+        intro h; apply hij; exact Fin.ext h
+      have h_mem : swapMat (⟨i.1, by omega⟩) (⟨j.1, by omega⟩) ∈ swapMats := by
+        -- We can check this by `dec_trivial` because the list is finite and explicit.
+        -- We need to construct a proof that the pair is in `transpositions`.
+        -- We'll write a tactic `dec_trivial` for membership.
+        native_decide
+      apply eq_of_comm_swap hne (h_comm _ h_mem)
+  have h_LL : f ⟨6, by omega⟩ = f ⟨7, by omega⟩ := by
+    have h_mem : swapMat ⟨6, by omega⟩ ⟨7, by omega⟩ ∈ swapMats := by native_decide
+    have hne : (⟨6, by omega⟩ : H15) ≠ ⟨7, by omega⟩ := by decide
+    exact eq_of_comm_swap hne (h_comm _ h_mem)
+  have h_uR : ∀ (i j : Fin 3), f ⟨8+i.1, by omega⟩ = f ⟨8+j.1, by omega⟩ := by
+    intro i j
+    by_cases hij : i = j
+    · subst hij; rfl
+    · have hne : (⟨8+i.1, by omega⟩ : H15) ≠ ⟨8+j.1, by omega⟩ := by
+        intro h; apply hij; exact Fin.ext (by omega)
+      have h_mem : swapMat (⟨8+i.1, by omega⟩) (⟨8+j.1, by omega⟩) ∈ swapMats := by native_decide
+      exact eq_of_comm_swap hne (h_comm _ h_mem)
+  have h_dR : ∀ (i j : Fin 3), f ⟨11+i.1, by omega⟩ = f ⟨11+j.1, by omega⟩ := by
+    intro i j
+    by_cases hij : i = j
+    · subst hij; rfl
+    · have hne : (⟨11+i.1, by omega⟩ : H15) ≠ ⟨11+j.1, by omega⟩ := by
+        intro h; apply hij; exact Fin.ext (by omega)
+      have h_mem : swapMat (⟨11+i.1, by omega⟩) (⟨11+j.1, by omega⟩) ∈ swapMats := by native_decide
+      exact eq_of_comm_swap hne (h_comm _ h_mem)
+  exact ⟨h_QL, h_LL, h_uR, h_dR⟩
+
+/-- Consistency check: the standard hypercharge matrix `YF` is block‑scalar
+    (its diagonal values satisfy the above theorem). -/
+def YF_diag (i : H15) : ℚ :=
+  let v := i.val
+  if v < 6 then 1/6 else if v < 8 then -1/2 else if v < 11 then 2/3 else if v < 14 then -1/3 else -1
+
+lemma YF_eq_diag : YF = diag YF_diag := by
+  ext i j; simp [YF, diag, YF_diag]; split <;> rfl
+
+lemma YF_block_scalar :
+    (∀ (i j : Fin 6), YF_diag ⟨i, by omega⟩ = YF_diag ⟨j, by omega⟩) ∧
+    (YF_diag ⟨6, by omega⟩ = YF_diag ⟨7, by omega⟩) ∧
+    (∀ (i j : Fin 3), YF_diag ⟨8+i.1, by omega⟩ = YF_diag ⟨8+j.1, by omega⟩) ∧
+    (∀ (i j : Fin 3), YF_diag ⟨11+i.1, by omega⟩ = YF_diag ⟨11+j.1, by omega⟩) := by
+  -- We can verify this by `native_decide` on all the finite cases.
+  constructor
+  · intro i j; fin_cases i <;> fin_cases j <;> rfl
+  · rfl
+  · intro i j; fin_cases i <;> fin_cases j <;> rfl
+  · intro i j; fin_cases i <;> fin_cases j <;> rfl
+
+end ThetStandardModel
+
+
 git add Thet/HyperchargeMatrix.lean
 git commit -m "feat: explicit 15×15 hypercharge and T₃ matrices
 
