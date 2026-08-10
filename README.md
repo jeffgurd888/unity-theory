@@ -1,4 +1,12 @@
+Main.lean
+git add ThetAlgebra/SU5/ Main.lean
+git commit -m "feat: SU(5) normalization and Weinberg angle (sin²θ_W = 3/8)
 
+- Explicit 5×5 matrices for YSM, TY, T3.
+- Trace identities: Tr(YSM)=0, Tr(YSM²)=5/6, Tr(TY²)=1/2, Tr(T3²)=1/2, Tr(TY T3)=0.
+- Coupling definitions: g2 = g5, gY = √(3/5) g5.
+- Proof that gY²/g₂² = 3/5 → sin²θ_W = 3/8.
+- Main theorem: SU5_Weinberg_angle."
 import Mathlib.Data.Matrix.Basic
 import Mathlib.Data.Rat.Basic
 import Mathlib.Tactic
