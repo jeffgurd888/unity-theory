@@ -1,4 +1,35 @@
-Main.lean
+git commit -m "feat(SU5): formalize machine-verified derivation of sin^2 theta_W = 3/8
+
+This commit establishes the mathematical baseline for the Thet program by
+implementing a machine-checked proof of the Georgi-Glashow SU(5) unification
+value.
+
+The Lean 4 codebase, built on Mathlib4, formalizes the full algebraic chain:
+1. Defines the Standard Model hypercharge (Y_SM) and weak isospin (T_3)
+   generators as explicit 5x5 diagonal matrices in M_5(C).
+2. Proves the group-theoretic trace identities Tr(Y_SM)=0, Tr(Y_SM^2)=5/6.
+3. Applies the canonical SU(5) normalization (scaling by sqrt(3/5)) to arrive
+   at Tr(T_Y^2) = Tr(T_3^2) = 1/2, ensuring unified coupling.
+4. Derives the gauge coupling ratio g_Y^2 / g_2^2 = 3/5.
+5. Proves the final theorem `SU5_Weinberg_angle` concluding that
+   sin^2 theta_W = 3/8 holds strictly at the unification scale.
+
+While this confirms the textbook SU(5) result, it serves as the verified
+foundational layer for future developments. Planned extensions will investigate
+deriving these same structures from a more fundamental 'Thet' operator algebra
+and bridge the formalism with an SU(4) Pati-Salam intermediate structure.
+
+File structure added:
+- ThetAlgebra/SU5/Generators.lean      : Matrix definitions and trace identities
+- ThetAlgebra/SU5/Coupling.lean        : Canonical normalization & coupling ratio
+- ThetAlgebra/SU5/Weinberg.lean        : Final sin^2 theta_W theorem proof
+- ThetAlgebra/Main.lean                : Top-level assembly of the theorem
+- ThetAlgebra/README.md                : Basic overview, dependencies, and color coding
+
+All arithmetic manipulations are verified using Lean's `norm_num` and `simp`
+tactics, leaving zero arithmetic gaps.
+
+Signed-off-by: Jeffrey Michael Gurd <jeffrey.gurd@nexusresearch.org>"Main.lean
 git add ThetAlgebra/SU5/ Main.lean
 git commit -m "feat: SU(5) normalization and Weinberg angle (sin²θ_W = 3/8)
 
