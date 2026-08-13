@@ -1,3 +1,19 @@
+
+
+git add Thet/FullCommutant.lean
+git commit -m "feat(investigation): compute full simultaneous commutant dimension of θ_mass
+
+This commit executes the second milestone of the open physics roadmap.
+
+- Defined `SM_Gauge_Algebra` by directly embedding the 8 SU(3) Gell-Mann generators, 3 SU(2) Pauli generators, and the 1 hypercharge generator into the 16-dimensional fermion space.
+- Defined `Centralizer_of_Mass` as the subalgebra of all matrices that commute with θ_mass.
+- Established theorem `mass_commutant_investigation` to verify two facts:
+  1. The SM gauge algebra is a subalgebra of the centralizer.
+  2. The dimension of the centralizer is 12.
+
+If the theorem compiles, we have a machine-verified proof that the known gauge group is exactly the full symmetry preserving the mass structure. If it fails (dimension > 12), it signals an accidental symmetry requiring further Higgs-sector analysis.
+"
+
 git add Thet/FullCommutant.lean
 git commit -m "feat(investigation): compute full simultaneous commutant dimension of θ_mass
 
