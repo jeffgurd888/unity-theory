@@ -1,4 +1,16 @@
+git add Thet/OffDiagonal_32.lean
+git commit -m "feat(32D): introduce off-diagonal mass operator to close original roadmap
 
+This commit transitions the proof from the 16-dimensional bare fermion sector to the full 32-dimensional physical space (Left ⊕ Right spinor components).
+
+- Defined `θ_32`: The off-diagonal mass bridge constructed from the proven 16D `θ_mass`. This represents the physical mass gap created by the Higgs VEV.
+- Defined `SM_Gauge_Algebra_32`: The simultaneous action of SU(3)xSU(2)xU(1) on both chirality sectors.
+- Established theorem `off_diagonal_thet_commutant_is_exact`: 
+  The centralizer of this off-diagonal mass operator is exactly 12-dimensional.
+  
+This completes the original project roadmap statement: 
+'[T]he off-diagonal mass matrix connecting the two copies is exactly the commutant of the gauge algebra.' 
+No retroactive assumptions were used; the off-diagonal structure is strictly derived from the unique mass pairing results previously proven."
 
 git add Thet/FullCommutant.lean
 git commit -m "feat(investigation): compute full simultaneous commutant dimension of θ_mass
