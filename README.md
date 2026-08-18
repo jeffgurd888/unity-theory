@@ -862,3 +862,16 @@ or
 Unity Theory proposes the latter as a hypothesis.
 
 The purpose of this repository is to determine, rigorously and reproducibly, whether the mathematics supports it.
+## Research Support
+
+Unity Theory is an independent research and formalization project.
+
+If you would like to support continued mathematical development, Lean formalization,
+computational experiments, and publication work, research donations are appreciated.
+
+**Cash App:** `$Gurd888`
+
+Donations are voluntary and are not required for access to the research or repository.
+
+Support does not constitute endorsement of the scientific claims, and donations do not
+affect the mathematical or experimental evaluation of the theory.
