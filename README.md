@@ -1,33 +1,22 @@
-import CGurd.Spectral
-import Mathlib.LinearAlgebra.Matrix.Trace
-import Mathlib.Analysis.SpecialFunctions.Exponential
+# CGurd · Ternary Chain Dynamics
 
-open Matrix
+A Lean 4 formalization of the trace dynamics of a minimal ternary chain operator
+built from diagonal modular evolution and an off-diagonal coupling matrix.
 
-/-- Standard non-trivial coupling matrix for inter-sector bridges. -/
-def couplingOp : C2Mat :=
-  ![![0, 1],
-    ![1, 0]]
+## Overview
 
-/-- Time-evolved boundary link: XY(t) = U_Y(t) * XY -/
-def evolvedXY (t : ℝ) (omega1 omega2 : ℝ) : C2Mat :=
-  UY t omega1 omega2 * couplingOp
+This module formalizes the algebraic backbone of a two-sector model in the
+CGURD framework: a thermal (Y) sector whose modular flow acts diagonally on
+two frequencies `ω₁, ω₂`, coupled to a boundary link modeled by the exchange
+matrix `[[0,1],[1,0]]`. The ternary chain operator is the square of the
+evolved link, and its trace factorizes cleanly into the sum of the two
+modular frequencies.
 
-/-- The complete ternary chain operator T(t) = YZ(t) * XY(t). -/
-def ternaryChain (t : ℝ) (omega1 omega2 : ℝ) : C2Mat :=
-  evolvedXY t omega1 omega2 * evolvedXY t omega1 omega2
+The full chain is proved end-to-end in Lean 4 with no `sorry` placeholders.
 
-/-- Theorem: Trace of the ternary operator factorizes into the sum of frequencies. -/
+## Main Result
+
+```lean
 theorem ternary_trace_theorem (t : ℝ) (omega1 omega2 : ℝ) :
-  Matrix.trace (ternaryChain t omega1 omega2) =
-  2 * Complex.exp (-Complex.I * t * (omega1 + omega2)) := by
-  -- Unfold definitions down to matrix components
-  dsimp [ternaryChain, evolvedXY, UY, couplingOp, Matrix.mul, Matrix.trace, Fin.sum_univ_two]
-  -- Simplify complex exponential products using exp addition laws
-  have h_exp : Complex.exp (-Complex.I * t * omega1) * Complex.exp (-Complex.I * t * omega2) =
-                Complex.exp (-Complex.I * t * (omega1 + omega2)) := by
-    rw [← Complex.exp_add]
-    congr 1
-    ring
-  rw [h_exp]
-  ring
+    Matrix.trace (ternaryChain t omega1 omega2) =
+    2 * Complex.exp (-Complex.I * t * (omega1 + omega2))
