@@ -13,3 +13,4 @@ Interpretation: the trace is the sum of the two closed two-step loops
 exp(-i t (ω₁ + ω₂)). The factor of 2 counts the two distinct paths."
 
 git push origin main
+
