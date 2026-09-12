@@ -1,22 +1,19 @@
-# CGurd · Ternary Chain Dynamics
+feat(CGurd/Ternary): prove trace factorization for the minimal XY chain
 
-A Lean 4 formalization of the trace dynamics of a minimal ternary chain operator
-built from diagonal modular evolution and an off-diagonal coupling matrix.
+Adds the trace identity for the squared evolved coupling operator
 
-## Overview
+  Tr[ (U_Y(t) · C)² ] = 2 · exp( -i t (ω₁ + ω₂) )
 
-This module formalizes the algebraic backbone of a two-sector model in the
-CGURD framework: a thermal (Y) sector whose modular flow acts diagonally on
-two frequencies `ω₁, ω₂`, coupled to a boundary link modeled by the exchange
-matrix `[[0,1],[1,0]]`. The ternary chain operator is the square of the
-evolved link, and its trace factorizes cleanly into the sum of the two
-modular frequencies.
+for the diagonal modular flow U_Y(t) = diag(e^{-i t ω₁}, e^{-i t ω₂}) and
+the exchange matrix C = [[0,1],[1,0]]. Proved end-to-end with no sorry.
 
-The full chain is proved end-to-end in Lean 4 with no `sorry` placeholders.
+Interpretation: the trace is the sum of the two closed two-step loops
+1 → 2 → 1 and 2 → 1 → 2, each contributing the combined phase
+exp(-i t (ω₁ + ω₂)). The factor of 2 counts the two distinct paths.
 
-## Main Result
+This is a foundational QED lemma for the ternary-chain layer of CGURD.
+It is not a physical claim about any specific KMS state or measured
+quantity; it is a formal identity about the 2×2 model.
 
-```lean
-theorem ternary_trace_theorem (t : ℝ) (omega1 omega2 : ℝ) :
-    Matrix.trace (ternaryChain t omega1 omega2) =
-    2 * Complex.exp (-Complex.I * t * (omega1 + omega2))
+Files:
+  CGurd/Ternary.lean   (new)
