@@ -1,5 +1,3 @@
-git add .
-git commit -m "$(cat <<'EOF'
 feat(S³-Hyperspace): finalize Master Nexus Lean 4 formalization
 
 Complete, axiom-free finite-dimensional formalization of the Master Nexus
@@ -29,5 +27,3 @@ Layers:
 
 All previous axioms removed. NormedAlgebra instance on the operator algebra
 is inferred from the standing hypotheses. Ready for lake build.
-EOF
-)"
