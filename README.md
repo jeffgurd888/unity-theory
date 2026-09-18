@@ -1,29 +1,26 @@
-feat(S³-Hyperspace): finalize Master Nexus Lean 4 formalization
+---
 
-Complete, axiom-free finite-dimensional formalization of the Master Nexus
-for S³ Hyperspace in Lean 4 / Mathlib.
+# **📄 install.sh (copy & paste)**
 
-Layers:
-- Algebraic Shadows & Spectral Infrastructure
-  • EMAlgebra (ternary TRO bracket)
-  • ThermalState with positivity
-  • Modular Hamiltonian K = -cfc Real.log ρ  (axiom closed)
-  • ThermalFlow instance via ContinuousLinearMap.exp
-  • Finite spectral triple on ℂ³²
-    – chiral grading γ_F (γ_F² = id)
-    – reality operator J_F (J_F² = id)
-    – block Dirac operator D_F
-    – non-trivial λ_F representation
-    – Connes–Chamseddine order-one condition
+```bash
+#!/usr/bin/env bash
+set -e
 
-- Crossover Dynamics
-  • Ternary derivation predicate
-  • Operator-norm scaling bounds
-  • Continuity of modular flow at s = 0
+echo "𐤈 Nexus Codex — Auto Installer"
+echo "Cloning repository..."
 
-- 7-State Torsion Sector
-  • TorsionSystem on ℂ⁷
-  • Phase-invariance under matrix action
+REPO="https://github.com/<YOUR-USER>/nexus-theta-codex.git"
+TARGET="$HOME/nexus-theta-codex"
 
-All previous axioms removed. NormedAlgebra instance on the operator algebra
-is inferred from the standing hypotheses. Ready for lake build.
+git clone "$REPO" "$TARGET"
+
+cd "$TARGET"
+
+echo "Running setup scripts..."
+bash setup/init.sh
+bash setup/lean-deps.sh
+bash setup/hypercodex-build.sh
+bash setup/verify.sh
+
+echo "Installation complete."
+echo "Launch with: make run"
