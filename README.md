@@ -1,3 +1,5 @@
+CGurd/FiniteSpectralTriple.lean
+
 Here is the updated, semantically complete src/FiniteSpectralTriple.lean source incorporating the conjugate opposite representation \pi^\circ(b) = U_J \overline{\pi(b)} U_J, the KO-dimension 6 real-grading anti-commutation theorem (U_J \overline{\gamma_F} U_J = -\gamma_F), and the full 7-axiom SMFiniteSpectralTriple bundle definition.
 Production Source Code: src/FiniteSpectralTriple.lean
 import Mathlib.Data.Matrix.Basic
