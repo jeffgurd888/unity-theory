@@ -1,3 +1,5 @@
+lake build 2>&1 | tail -n 60
+
 import Mathlib.Data.Matrix.Basic
 import Mathlib.Data.Complex.Basic
 import Mathlib.Tactic
