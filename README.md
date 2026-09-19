@@ -1,70 +1,289 @@
----
+import Mathlib.Data.Matrix.Basic
+import Mathlib.Data.Complex.Basic
+import Mathlib.Tactic
+open Matrix
 
-# **📄 install.sh (copy & paste)**
+abbrev I32 := Fin 32
+abbrev I16 := Fin 16
+abbrev I8  := Fin 8
+abbrev I3  := Fin 3
+abbrev I2  := Fin 2
 
-```bash
-#!/usr/bin/env bash
-set -e
+abbrev Block8 := Matrix I8 I8 ℂ
 
-echo "𐤈 Nexus Codex — Auto Installer"
-echo "Cloning repository..."
+structure SMAlgebra where
+  u1    : ℂ
+  q     : Matrix I2 I2 ℂ
+  color : Matrix I3 I3 ℂ
 
-REPO="https://github.com/<YOUR-USER>/nexus-theta-codex.git"
-TARGET="$HOME/nexus-theta-codex"
+abbrev AF := SMAlgebra
 
-git clone "$REPO" "$TARGET"
+def partner (i : I32) : I32 :=
+  if h : i.val < 16 then ⟨i.val + 16, by linarith⟩
+  else ⟨i.val - 16, by linarith⟩
 
+def UJ_matrix (i j : I32) : ℂ := if j = partner i then 1 else 0
 
-cd "$TARGET"
+def gammaF : Matrix I32 I32 ℂ := fun i j =>
+  if h : i = j then
+    let k := i.val
+    if k < 8 then 1
+    else if k < 16 then -1
+    else if k < 24 then -1
+    else 1
+  else 0
 
-echo "Running setup scripts..."
-bash setup/init.sh
-bash setup/lean-deps.sh
-bash setup/hypercodex-build.sh
-bash setup/verify.sh
+def diagBlock8 (λ : I8 → ℝ) : Block8 := fun i j =>
+  if h : i = j then (λ i : ℂ) else 0
 
-echo "Installation complete."
-echo "Launch with: make run"
----
+def buildDirac (A B C E : Block8) : Matrix I32 I32 ℂ := fun i j =>
+  let iv := i.val; let jv := j.val
+  if iv < 8 then
+    if jv < 8 then 0
+    else if jv < 16 then A ⟨iv, by decide⟩ ⟨jv - 8, by decide⟩
+    else if jv < 24 then C ⟨iv, by decide⟩ ⟨jv - 16, by decide⟩
+    else 0
+  else if iv < 16 then
+    if jv < 8 then (A.conjTranspose) ⟨iv - 8, by decide⟩ ⟨jv, by decide⟩
+    else if jv < 16 then 0
+    else if jv < 24 then 0
+    else (E.conjTranspose) ⟨iv - 8, by decide⟩ ⟨jv - 24, by decide⟩
+  else if iv < 24 then
+    if jv < 8 then (C.conjTranspose) ⟨iv - 16, by decide⟩ ⟨jv, by decide⟩
+    else if jv < 16 then 0
+    else if jv < 24 then 0
+    else B ⟨iv - 16, by decide⟩ ⟨jv - 24, by decide⟩
+  else
+    if jv < 8 then 0
+    else if jv < 16 then E ⟨iv - 24, by decide⟩ ⟨jv - 8, by decide⟩
+    else if jv < 24 then (B.conjTranspose) ⟨iv - 24, by decide⟩ ⟨jv - 16, by decide⟩
+    else 0
 
-# **📄 install.sh (copy & paste)**
+def embedSM (a : AF) : Matrix I16 I16 ℂ := fun i j =>
+  if i = 0 ∧ j = 0 then a.u1
+  else if i.val ∈ ({1,2} : Set Nat) ∧ j.val ∈ ({1,2} : Set Nat) then a.q ⟨i.val - 1, by decide⟩ ⟨j.val - 1, by decide⟩
+  else if i.val ∈ ({3,4,5} : Set Nat) ∧ j.val ∈ ({3,4,5} : Set Nat) then a.color ⟨i.val - 3, by decide⟩ ⟨j.val - 3, by decide⟩
+  else 0
 
-```bash
-#!/usr/bin/env bash
-set -e
+def pi (a : AF) : Matrix I32 I32 ℂ := fun i j =>
+  if hi : i.val < 16 ∧ j.val < 16 then
+    embedSM a ⟨i.val, by decide⟩ ⟨j.val, by decide⟩
+  else 0
 
-echo "𐤈 Nexus Codex — Auto Installer"
-echo "Cloning repository..."
+def piOp (a : Matrix I32 I32 ℂ) : Matrix I32 I32 ℂ :=
+  let UJ : Matrix I32 I32 ℂ := fun i j => UJ_matrix i j
+  UJ ⬝ a.transpose ⬝ UJ
 
-REPO="https://github.com/<YOUR-USER>/nexus-theta-codex.git"
-TARGET="$HOME/nexus-theta-codex"
+/--
+Regression guard:
+`piOp` must remain definitionally equal to conjugation by `UJ`
+combined with matrix transpose.
+-/
+theorem piOp_def_check (a : Matrix I32 I32 ℂ) :
+    piOp a = (fun i j => UJ_matrix i j) ⬝ a.transpose ⬝ (fun i j => UJ_matrix i j) := by
+  rfl
 
-git clone "$REPO" "$TARGET"
+theorem partner_involutive (i : I32) : partner (partner i) = i := by
+  unfold partner
+  split_ifs <;> { ext; dsimp at *; omega }
 
-cd "$TARGET"
+theorem pi_zero_of_ge_16 {a : AF} {i j : I32} (h : 16 ≤ i.val ∨ 16 ≤ j.val) :
+    pi a i j = 0 := by
+  unfold pi
+  split_ifs with hboth
+  · rcases h with hi | hj
+    · have : ¬(i.val < 16) := Nat.not_lt_of_ge hi; contradiction
+    · have : ¬(j.val < 16) := Nat.not_lt_of_ge hj; contradiction
+  · rfl
 
-echo "Running setup scripts..."
-bash setup/init.sh
-bash setup/lean-deps.sh
-bash setup/hypercodex-build.sh
-bash setup/verify.sh
+theorem piOp_zero_of_lt_16 {b : AF} {i j : I32} (h : i.val < 16 ∨ j.val < 16) :
+    piOp (pi b) i j = 0 := by
+  let UJ : Matrix I32 I32 ℂ := fun i j => UJ_matrix i j
+  have : piOp (pi b) = UJ ⬝ (pi b).transpose ⬝ UJ := rfl
+  rw [this, Matrix.mul_apply, Matrix.mul_apply]
+  apply Finset.sum_eq_zero
+  intro k _
+  apply Finset.sum_eq_zero
+  intro l _
+  by_cases hk : k = partner i
+  · by_cases hl : l = partner j
+    · have h_ge : 16 ≤ l.val ∨ 16 ≤ k.val := by
+        rcases h with hi | hj
+        · left
+          dsimp [partner] at hk
+          have : 16 ≤ (partner i).val := by linarith
+          rw [←hk] at this; exact this
+        · right
+          dsimp [partner] at hl
+          have : 16 ≤ (partner j).val := by linarith
+          rw [←hl] at this; exact this
+      have hpi : pi b l k = 0 := pi_zero_of_ge_16 (Or.inl h_ge)
+      simp [hpi]
+    · unfold UJ_matrix; split_ifs with h_uj
+      · exfalso; apply hl; injection h_uj
+      · simp
+  · unfold UJ_matrix; split_ifs with h_uj
+    · exfalso; apply hk; injection h_uj
+    · simp
 
-echo "Installation complete."
-echo "Launch with: make run"
-.PHONY: all install build run verify
+theorem gammaF_mul_apply (M : Matrix I32 I32 ℂ) (i j : I32) :
+    (gammaF * M) i j = gammaF i i * M i j := by
+  rw [Matrix.mul_apply]
+  have : (Finset.univ : Finset I32).sum (fun k => gammaF i k * M k j) = gammaF i i * M i j := by
+    apply Finset.sum_eq_single (i : I32)
+    · simp [gammaF]; ring
+    · intro k _ hk
+      unfold gammaF; split_ifs with heq
+      · exfalso; exact hk heq.symm
+      · simp
+    · intro h; exact absurd (Finset.mem_univ _) h
+  exact this
 
-all: install build verify
+theorem mul_gammaF_apply (M : Matrix I32 I32 ℂ) (i j : I32) :
+    (M * gammaF) i j = M i j * gammaF j j := by
+  rw [Matrix.mul_apply]
+  have : (Finset.univ : Finset I32).sum (fun k => M i k * gammaF k j) = M i j * gammaF j j := by
+    apply Finset.sum_eq_single (j : I32)
+    · simp [gammaF]; ring
+    · intro k _ hk
+      unfold gammaF; split_ifs with heq
+      · exfalso; exact hk heq.symm
+      · simp
+    · intro h; exact absurd (Finset.mem_univ _) h
+  exact this
 
-install:
-	bash setup/init.sh
-	bash setup/lean-deps.sh
+theorem buildDirac_nonzero_opp_grading (A B C E : Block8) (i j : I32)
+    (h : buildDirac A B C E i j ≠ 0) : gammaF i i = - gammaF j j := by
+  by_cases hi : i.val < 16
+  · have hj_ge : 16 ≤ j.val := by
+      by_contra hj_lt
+      have : buildDirac A B C E i j = 0 := by unfold buildDirac; split_ifs <;> simp_all
+      contradiction
+    rcases Nat.lt_or_ge i.val 8 with hi8 | hi8
+    · have hgi : gammaF i i = 1 := by simp [gammaF, hi8]
+      have hgj : gammaF j j = -1 := by simp [gammaF]; linarith
+      rw [hgi, hgj]
+    · have hgi : gammaF i i = -1 := by simp [gammaF]; linarith
+      have hgj : gammaF j j = 1 := by simp [gammaF]; linarith
+      rw [hgi, hgj]
+  · have j_lt : j.val < 16 := by
+      by_contra hj_ge
+      have : buildDirac A B C E i j = 0 := by unfold buildDirac; split_ifs <;> simp_all
+      contradiction
+    rcases Nat.lt_or_ge j.val 8 with hj8 | hj8
+    · have hgj : gammaF j j = 1 := by simp [gammaF, hj8]
+      have hgi : gammaF i i = -1 := by simp [gammaF]; linarith
+      rw [hgi, hgj]
+    · have hgj : gammaF j j = -1 := by simp [gammaF]; linarith
+      have hgi : gammaF i i = 1 := by simp [gammaF]; linarith
+      rw [hgi, hgj]
 
-build:
-	bash setup/hypercodex-build.sh
+theorem buildDirac_gamma_odd (A B C E : Block8) :
+    (gammaF * buildDirac A B C E + buildDirac A B C E * gammaF) = 0 := by
+  ext i j
+  rw [Matrix.add_apply, Matrix.zero_apply]
+  have gmul := gammaF_mul_apply (buildDirac A B C E) i j
+  have mulg := mul_gammaF_apply (buildDirac A B C E) i j
+  by_cases hD : buildDirac A B C E i j = 0
+  · simp [hD, gmul, mulg]
+  · have h_opp := buildDirac_nonzero_opp_grading A B C E i j hD
+    rw [h_opp] at gmul
+    simp [gmul, mulg]
+    ring
 
-run:
-	echo "Launching Nexus 𐤈 Hypercodex Engine..."
-	node hypercodex/engine.js
+theorem buildDirac_self_adjoint (A B C E : Block8) :
+    (buildDirac A B C E).conjTranspose = buildDirac A B C E := by
+  ext i j
+  dsimp [Matrix.conjTranspose, Matrix.transpose]
+  rcases Nat.lt_or_ge i.val 16 with hi_lt | hi_ge
+  · rcases Nat.lt_or_ge j.val 16 with hj_lt | hj_ge
+    · unfold buildDirac; split_ifs
+      by_cases H1 : i.val < 8
+      · by_cases H2 : j.val < 8
+        · simp [H1, H2]; rfl
+        · have : (A.conjTranspose) ⟨j.val - 8, by decide⟩ ⟨i.val, by decide⟩ =
+                 Complex.conj (A ⟨i.val, by decide⟩ ⟨j.val - 8, by decide⟩) := rfl
+          simp [H1, H2]; rfl
+      · by_cases H2 : j.val < 8
+        · have : (A.conjTranspose) ⟨i.val - 8, by decide⟩ ⟨j.val, by decide⟩ =
+                 Complex.conj (A ⟨j.val, by decide⟩ ⟨i.val - 8, by decide⟩) := rfl
+          simp [H2]; rfl
+        · simp [H2]; rfl
+    · unfold buildDirac; split_ifs
+      by_cases Hi : i.val < 8
+      · by_cases Hj : j.val < 24
+        · have : (C.conjTranspose) ⟨j.val - 16, by decide⟩ ⟨i.val, by decide⟩ =
+                 Complex.conj (C ⟨i.val, by decide⟩ ⟨j.val - 16, by decide⟩) := rfl
+          simp [Hi, Hj]; rfl
+        · simp [Hi, Hj]; rfl
+      · by_cases Hj : j.val < 24
+        · simp [Hi, Hj]; rfl
+        · simp [Hi, Hj]; rfl
+  · rcases Nat.lt_or_ge j.val 16 with hj_lt | hj_ge
+    · unfold buildDirac; split_ifs; simp_all; rfl
+    · unfold buildDirac; split_ifs; simp_all; rfl
 
-verify:
-	bash setup/verify.sh
+theorem UJ_mul_self : (fun i j => UJ_matrix i j) * (fun i j => UJ_matrix i j) = 1 := by
+  ext i j
+  rw [Matrix.mul_apply]
+  by_cases h : j = i
+  · subst h; rw [Matrix.one_apply_same]
+    apply Finset.sum_eq_single (partner i)
+    · unfold UJ_matrix
+      have h1 : partner i = partner i := rfl
+      have h2 : i = partner (partner i) := (partner_involutive i).symm
+      simp [h1, h2]
+    · intro k _ hk
+      unfold UJ_matrix; split_ifs with hk1
+      · exfalso; exact hk hk1
+      · ring
+    · intro hmem; exact absurd (Finset.mem_univ _) hmem
+  · rw [Matrix.one_apply_ne h]
+    apply Finset.sum_eq_zero
+    intro k _
+    unfold UJ_matrix; split_ifs with hk1 hk2
+    · subst hk1 hk2; exfalso; exact h (partner_involutive i).symm
+    · ring
+    · ring
+    · ring
+
+theorem order_zero_condition (a b : AF) :
+    pi a * piOp (pi b) - piOp (pi b) * pi a = 0 := by
+  ext i j
+  rw [Matrix.sub_apply, Matrix.mul_apply, Matrix.mul_apply]
+  have h_left : (Finset.univ : Finset I32).sum (fun k => pi a i k * piOp (pi b) k j) = 0 := by
+    apply Finset.sum_eq_zero
+    intro k _
+    by_cases hk : k.val < 16
+    · have : piOp (pi b) k j = 0 := piOp_zero_of_lt_16 (Or.inl hk)
+      rw [this, mul_zero]
+    · have : pi a i k = 0 := pi_zero_of_ge_16 (Or.inr (le_of_not_gt hk))
+      rw [this, zero_mul]
+  have h_right : (Finset.univ : Finset I32).sum (fun k => piOp (pi b) i k * pi a k j) = 0 := by
+    apply Finset.sum_eq_zero
+    intro k _
+    by_cases hk : k.val < 16
+    · have : piOp (pi b) i k = 0 := piOp_zero_of_lt_16 (Or.inr hk)
+      rw [this, zero_mul]
+    · have : pi a k j = 0 := pi_zero_of_ge_16 (Or.inl (le_of_not_gt hk))
+      rw [this, mul_zero]
+  rw [h_left, h_right, sub_self]
+
+/-- SM Finite Spectral Triple Audit Bundle -/
+structure SMFiniteSpectralTriple where
+  Dirac : Matrix I32 I32 ℂ
+  Gamma : Matrix I32 I32 ℂ
+  UJ    : Matrix I32 I32 ℂ
+  self_adjoint : Dirac.conjTranspose = Dirac
+  gamma_odd    : Gamma * Dirac + Dirac * Gamma = 0
+  J_involutive : UJ * UJ = 1
+  order_zero   : ∀ (a b : AF), pi a * piOp (pi b) - piOp (pi b) * pi a = 0
+
+def standardModelFiniteTriple (A B C E : Block8) : SMFiniteSpectralTriple where
+  Dirac := buildDirac A B C E
+  Gamma := gammaF
+  UJ := fun i j => UJ_matrix i j
+  self_adjoint := buildDirac_self_adjoint A B C E
+  gamma_odd := buildDirac_gamma_odd A B C E
+  J_involutive := UJ_mul_self
+  order_zero := order_zero_condition
