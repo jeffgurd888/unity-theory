@@ -1,12 +1,2 @@
-name = "CGurd"
-defaultTargets = ["CGurd"]
-
-[[require]]
-name = "mathlib"
-git = "https://github.com/leanprover-community/mathlib4.git"
-
-[[lean_lib]]
-name = "CGurd"
-
 lake build 2>&1 | tee build.log
 tail -n 60 build.log
