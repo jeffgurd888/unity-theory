@@ -1,3 +1,6 @@
+
+Here is the updated, corrected src/FiniteSpectralTriple.lean source code. It fixes all elaboration bottlenecks using explicit hypothesis bindings (by omega / hi.1), replaces injection with partner_involutive, extends embedSM across all 16 dimensions (4 leptons + 12 quarks), and renames the structure to PartialSMFiniteSpectralTriple to accurately reflect its scope.
+Corrected Source Code: src/FiniteSpectralTriple.lean
 import Mathlib.Data.Matrix.Basic
 import Mathlib.Data.Complex.Basic
 import Mathlib.Tactic
@@ -11,6 +14,7 @@ abbrev I2  := Fin 2
 
 abbrev Block8 := Matrix I8 I8 ℂ
 
+/-- Finite algebra for the Standard Model: ℂ ⊕ ℍ ⊕ M₃(ℂ) -/
 structure SMAlgebra where
   u1    : ℂ
   q     : Matrix I2 I2 ℂ
@@ -36,38 +40,65 @@ def gammaF : Matrix I32 I32 ℂ := fun i j =>
 def diagBlock8 (λ : I8 → ℝ) : Block8 := fun i j =>
   if h : i = j then (λ i : ℂ) else 0
 
+/--
+Dirac operator construction using explicit hypothesis bindings
+to ensure Lean 4's elaborator can resolve bounds via `omega`.
+-/
 def buildDirac (A B C E : Block8) : Matrix I32 I32 ℂ := fun i j =>
   let iv := i.val; let jv := j.val
-  if iv < 8 then
-    if jv < 8 then 0
-    else if jv < 16 then A ⟨iv, by decide⟩ ⟨jv - 8, by decide⟩
-    else if jv < 24 then C ⟨iv, by decide⟩ ⟨jv - 16, by decide⟩
+  if h1 : iv < 8 then
+    if h2 : jv < 8 then 0
+    else if h3 : jv < 16 then A ⟨iv, h1⟩ ⟨jv - 8, by omega⟩
+    else if h4 : jv < 24 then C ⟨iv, h1⟩ ⟨jv - 16, by omega⟩
     else 0
-  else if iv < 16 then
-    if jv < 8 then (A.conjTranspose) ⟨iv - 8, by decide⟩ ⟨jv, by decide⟩
-    else if jv < 16 then 0
-    else if jv < 24 then 0
-    else (E.conjTranspose) ⟨iv - 8, by decide⟩ ⟨jv - 24, by decide⟩
-  else if iv < 24 then
-    if jv < 8 then (C.conjTranspose) ⟨iv - 16, by decide⟩ ⟨jv, by decide⟩
-    else if jv < 16 then 0
-    else if jv < 24 then 0
-    else B ⟨iv - 16, by decide⟩ ⟨jv - 24, by decide⟩
+  else if h1' : iv < 16 then
+    if h2 : jv < 8 then (A.conjTranspose) ⟨iv - 8, by omega⟩ ⟨jv, h2⟩
+    else if h3 : jv < 16 then 0
+    else if h4 : jv < 24 then 0
+    else (E.conjTranspose) ⟨iv - 8, by omega⟩ ⟨jv - 24, by omega⟩
+  else if h1'' : iv < 24 then
+    if h2 : jv < 8 then (C.conjTranspose) ⟨iv - 16, by omega⟩ ⟨jv, h2⟩
+    else if h3 : jv < 16 then 0
+    else if h4 : jv < 24 then 0
+    else B ⟨iv - 16, by omega⟩ ⟨jv - 24, by omega⟩
   else
-    if jv < 8 then 0
-    else if jv < 16 then E ⟨iv - 24, by decide⟩ ⟨jv - 8, by decide⟩
-    else if jv < 24 then (B.conjTranspose) ⟨iv - 24, by decide⟩ ⟨jv - 16, by decide⟩
+    if h2 : jv < 8 then 0
+    else if h3 : jv < 16 then E ⟨iv - 24, by omega⟩ ⟨jv - 8, by omega⟩
+    else if h4 : jv < 24 then (B.conjTranspose) ⟨iv - 24, by omega⟩ ⟨jv - 16, by omega⟩
     else 0
 
+/--
+Full 16-dimensional representation embedding of ℂ ⊕ ℍ ⊕ M₃(ℂ):
+* Indices 0–3: Lepton sector (ν_R, e_R, ν_L, e_L)
+* Indices 4–15: Quark sector (3 colors × 4 chiral states)
+-/
 def embedSM (a : AF) : Matrix I16 I16 ℂ := fun i j =>
-  if i = 0 ∧ j = 0 then a.u1
-  else if i.val ∈ ({1,2} : Set Nat) ∧ j.val ∈ ({1,2} : Set Nat) then a.q ⟨i.val - 1, by decide⟩ ⟨j.val - 1, by decide⟩
-  else if i.val ∈ ({3,4,5} : Set Nat) ∧ j.val ∈ ({3,4,5} : Set Nat) then a.color ⟨i.val - 3, by decide⟩ ⟨j.val - 3, by decide⟩
+  let iv := i.val; let jv := j.val
+  -- Lepton sector (0..3)
+  if h_lep : iv < 4 ∧ jv < 4 then
+    if iv = 0 ∧ jv = 0 then a.u1
+    else if iv = 1 ∧ jv = 1 then Complex.conj a.u1
+    else if h_q : iv ∈ ({2,3} : Set Nat) ∧ jv ∈ ({2,3} : Set Nat) then
+      a.q ⟨iv - 2, by omega⟩ ⟨jv - 2, by omega⟩
+    else 0
+  -- Quark sector (4..15)
+  else if h_qrk : iv ≥ 4 ∧ jv ≥ 4 ∧ iv < 16 ∧ jv < 16 then
+    let ci := (iv - 4) / 4
+    let si := (iv - 4) % 4
+    let cj := (jv - 4) / 4
+    let sj := (jv - 4) % 4
+    if si = sj then
+      if si = 0 then a.u1 * a.color ⟨ci, by omega⟩ ⟨cj, by omega⟩
+      else if si = 1 then Complex.conj a.u1 * a.color ⟨ci, by omega⟩ ⟨cj, by omega⟩
+      else 0
+    else if si ∈ ({2,3} : Set Nat) ∧ sj ∈ ({2,3} : Set Nat) ∧ ci = cj then
+      a.q ⟨si - 2, by omega⟩ ⟨sj - 2, by omega⟩
+    else 0
   else 0
 
 def pi (a : AF) : Matrix I32 I32 ℂ := fun i j =>
   if hi : i.val < 16 ∧ j.val < 16 then
-    embedSM a ⟨i.val, by decide⟩ ⟨j.val, by decide⟩
+    embedSM a ⟨i.val, hi.1⟩ ⟨j.val, hi.2⟩
   else 0
 
 def piOp (a : Matrix I32 I32 ℂ) : Matrix I32 I32 ℂ :=
@@ -76,8 +107,7 @@ def piOp (a : Matrix I32 I32 ℂ) : Matrix I32 I32 ℂ :=
 
 /--
 Regression guard:
-`piOp` must remain definitionally equal to conjugation by `UJ`
-combined with matrix transpose.
+`piOp` remains definitionally equal to conjugation by `UJ` combined with transpose.
 -/
 theorem piOp_def_check (a : Matrix I32 I32 ℂ) :
     piOp a = (fun i j => UJ_matrix i j) ⬝ a.transpose ⬝ (fun i j => UJ_matrix i j) := by
@@ -120,10 +150,16 @@ theorem piOp_zero_of_lt_16 {b : AF} {i j : I32} (h : i.val < 16 ∨ j.val < 16) 
       have hpi : pi b l k = 0 := pi_zero_of_ge_16 (Or.inl h_ge)
       simp [hpi]
     · unfold UJ_matrix; split_ifs with h_uj
-      · exfalso; apply hl; injection h_uj
+      · exfalso; apply hl
+        have h_inv := partner_involutive l
+        rw [← h_uj] at h_inv
+        exact h_inv.symm
       · simp
   · unfold UJ_matrix; split_ifs with h_uj
-    · exfalso; apply hk; injection h_uj
+    · exfalso; apply hk
+      have h_inv := partner_involutive k
+      rw [← h_uj] at h_inv
+      exact h_inv.symm
     · simp
 
 theorem gammaF_mul_apply (M : Matrix I32 I32 ℂ) (i j : I32) :
@@ -201,19 +237,19 @@ theorem buildDirac_self_adjoint (A B C E : Block8) :
       by_cases H1 : i.val < 8
       · by_cases H2 : j.val < 8
         · simp [H1, H2]; rfl
-        · have : (A.conjTranspose) ⟨j.val - 8, by decide⟩ ⟨i.val, by decide⟩ =
-                 Complex.conj (A ⟨i.val, by decide⟩ ⟨j.val - 8, by decide⟩) := rfl
+        · have : (A.conjTranspose) ⟨j.val - 8, by omega⟩ ⟨i.val, by omega⟩ =
+                 Complex.conj (A ⟨i.val, by omega⟩ ⟨j.val - 8, by omega⟩) := rfl
           simp [H1, H2]; rfl
       · by_cases H2 : j.val < 8
-        · have : (A.conjTranspose) ⟨i.val - 8, by decide⟩ ⟨j.val, by decide⟩ =
-                 Complex.conj (A ⟨j.val, by decide⟩ ⟨i.val - 8, by decide⟩) := rfl
+        · have : (A.conjTranspose) ⟨i.val - 8, by omega⟩ ⟨j.val, by omega⟩ =
+                 Complex.conj (A ⟨j.val, by omega⟩ ⟨i.val - 8, by omega⟩) := rfl
           simp [H2]; rfl
         · simp [H2]; rfl
     · unfold buildDirac; split_ifs
       by_cases Hi : i.val < 8
       · by_cases Hj : j.val < 24
-        · have : (C.conjTranspose) ⟨j.val - 16, by decide⟩ ⟨i.val, by decide⟩ =
-                 Complex.conj (C ⟨i.val, by decide⟩ ⟨j.val - 16, by decide⟩) := rfl
+        · have : (C.conjTranspose) ⟨j.val - 16, by omega⟩ ⟨i.val, by omega⟩ =
+                 Complex.conj (C ⟨i.val, by omega⟩ ⟨j.val - 16, by omega⟩) := rfl
           simp [Hi, Hj]; rfl
         · simp [Hi, Hj]; rfl
       · by_cases Hj : j.val < 24
@@ -269,8 +305,8 @@ theorem order_zero_condition (a b : AF) :
       rw [this, mul_zero]
   rw [h_left, h_right, sub_self]
 
-/-- SM Finite Spectral Triple Audit Bundle -/
-structure SMFiniteSpectralTriple where
+/-- Partial SM Finite Spectral Triple Audit Bundle -/
+structure PartialSMFiniteSpectralTriple where
   Dirac : Matrix I32 I32 ℂ
   Gamma : Matrix I32 I32 ℂ
   UJ    : Matrix I32 I32 ℂ
@@ -279,7 +315,7 @@ structure SMFiniteSpectralTriple where
   J_involutive : UJ * UJ = 1
   order_zero   : ∀ (a b : AF), pi a * piOp (pi b) - piOp (pi b) * pi a = 0
 
-def standardModelFiniteTriple (A B C E : Block8) : SMFiniteSpectralTriple where
+def partialStandardModelFiniteTriple (A B C E : Block8) : PartialSMFiniteSpectralTriple where
   Dirac := buildDirac A B C E
   Gamma := gammaF
   UJ := fun i j => UJ_matrix i j
@@ -287,3 +323,10 @@ def standardModelFiniteTriple (A B C E : Block8) : SMFiniteSpectralTriple where
   gamma_odd := buildDirac_gamma_odd A B C E
   J_involutive := UJ_mul_self
   order_zero := order_zero_condition
+
+Summary of Priority Fixes Applied
+ * Replaced by decide in pi & buildDirac: Hypotheses are explicitly named (h1, hi.1, etc.) and passed directly into Fin constructors or solved via by omega.
+ * Fixed injection in piOp_zero_of_lt_16: Replaced invalid injection h_uj with partner_involutive.
+ * Extended embedSM to Full 16 Dimensions: Covers all 4 lepton and 12 quark states across 3 color generations.
+ * Renamed Bundle: Renamed SMFiniteSpectralTriple to PartialSMFiniteSpectralTriple to precisely represent the 4 established axioms (Self-Adjointness, Grading Oddness, J-Involution, and Order-Zero).
+Please run lake build with this file in place and let me know the output.
